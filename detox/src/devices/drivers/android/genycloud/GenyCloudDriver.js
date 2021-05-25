@@ -1,19 +1,21 @@
 const semver = require('semver');
 const onSignalExit = require('signal-exit');
+
+const DetoxRuntimeError = require('../../../../errors/DetoxRuntimeError');
+const environment = require('../../../../utils/environment');
+const logger = require('../../../../utils/logger').child({ __filename });
 const AndroidDriver = require('../AndroidDriver');
-const InstanceLauncher = require('./helpers/GenyCloudInstanceLauncher');
-const GenyCloudInstanceAllocation = require('./helpers/GenyCloudInstanceAllocation');
+
 const GenyDeviceRegistryFactory = require('./GenyDeviceRegistryFactory');
 const GenyCloudExec = require('./exec/GenyCloudExec');
-const RecipesService = require('./services/GenyRecipesService');
-const InstanceLookupService = require('./services/GenyInstanceLookupService');
-const InstanceLifecycleService = require('./services/GenyInstanceLifecycleService');
-const InstanceNaming = require('./services/GenyInstanceNaming');
-const AuthService = require('./services/GenyAuthService');
+const GenyCloudInstanceAllocation = require('./helpers/GenyCloudInstanceAllocation');
+const InstanceLauncher = require('./helpers/GenyCloudInstanceLauncher');
 const RecipeQuerying = require('./helpers/GenyRecipeQuerying');
-const DetoxRuntimeError = require('../../../../errors/DetoxRuntimeError');
-const logger = require('../../../../utils/logger').child({ __filename });
-const environment = require('../../../../utils/environment');
+const AuthService = require('./services/GenyAuthService');
+const InstanceLifecycleService = require('./services/GenyInstanceLifecycleService');
+const InstanceLookupService = require('./services/GenyInstanceLookupService');
+const InstanceNaming = require('./services/GenyInstanceNaming');
+const RecipesService = require('./services/GenyRecipesService');
 
 const MIN_GMSAAS_VERSION = '1.6.0';
 const cleanupLogData = {
@@ -116,7 +118,8 @@ class GenyCloudDriver extends AndroidDriver {
     onSignalExit((code, signal) => {
       if (signal) {
         const deviceCleanupRegistry = GenyDeviceRegistryFactory.forGlobalShutdown();
-        const { rawDevices: instanceHandles } = deviceCleanupRegistry.readRegisteredDevicesUNSAFE();
+        const { rawDevices  } = deviceCleanupRegistry.readRegisteredDevicesUNSAFE();
+        const instanceHandles = rawDevicesToInstanceHandles(rawDevices);
         if (instanceHandles.length) {
           reportGlobalCleanupSummary(instanceHandles);
         }
@@ -126,7 +129,8 @@ class GenyCloudDriver extends AndroidDriver {
 
   static async globalCleanup() {
     const deviceCleanupRegistry = GenyDeviceRegistryFactory.forGlobalShutdown();
-    const { rawDevices: instanceHandles } = await deviceCleanupRegistry.readRegisteredDevices();
+    const { rawDevices } = await deviceCleanupRegistry.readRegisteredDevices();
+    const instanceHandles = rawDevicesToInstanceHandles(rawDevices);
     if (instanceHandles.length) {
       const exec = new GenyCloudExec(environment.getGmsaasPath());
       const instanceLifecycleService = new InstanceLifecycleService(exec, null);
@@ -165,4 +169,10 @@ function reportGlobalCleanupSummary(deletionLeaks) {
   }
 }
 
+function rawDevicesToInstanceHandles(rawDevices) {
+  return rawDevices.map((rawDevice) => ({
+    uuid: rawDevice.id,
+    name: rawDevice.data.name,
+  }));
+}
 module.exports = GenyCloudDriver;

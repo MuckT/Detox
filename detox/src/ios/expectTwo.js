@@ -1,11 +1,13 @@
+const path = require('path');
+
+const fs = require('fs-extra');
 const _ = require('lodash');
-const DetoxRuntimeError = require('../errors/DetoxRuntimeError');
+const tempfile = require('tempfile');
+
 const { assertEnum, assertNormalized, assertNumber } = require('../utils/assertArgument');
+
 const assertDirection = assertEnum(['left', 'right', 'up', 'down']);
 const assertSpeed = assertEnum(['fast', 'slow']);
-const tempfile = require('tempfile');
-const fs = require('fs-extra');
-const path = require('path');
 
 class Expect {
   constructor(invocationManager, element) {
@@ -88,7 +90,7 @@ class Expect {
       type: 'expectation',
       predicate: this.element.matcher.predicate,
       ...(this.element.index !== undefined && { atIndex: this.element.index }),
-      ...(this.modifiers.length !== 0 && {modifiers: this.modifiers}),
+      ...(this.modifiers.length !== 0 && { modifiers: this.modifiers }),
       expectation,
       ...(params.length !== 0 && { params: _.without(params, undefined) })
     };
@@ -243,7 +245,7 @@ class Element {
   }
 
   async takeScreenshot(fileName) {
-    const {screenshotPath} = await this.withAction('takeScreenshot', fileName);
+    const { screenshotPath } = await this.withAction('takeScreenshot', fileName);
 
     const filePath = tempfile('.detox.element-screenshot.png');
     await fs.move(screenshotPath, filePath);
@@ -269,7 +271,7 @@ class Element {
     if (targetElementMatcher && targetElementMatcher.matcher && targetElementMatcher.matcher.predicate) {
       invocation.targetElement = {
         predicate: targetElementMatcher.matcher.predicate
-      }
+      };
     }
 
     return invocation;
@@ -353,7 +355,7 @@ class Matcher {
   }
 
   traits(traits) {
-    if (typeof traits !== 'object' || !traits instanceof Array) throw new Error('traits must be an array, got ' + typeof traits);
+    if (!Array.isArray(traits)) throw new Error('traits must be an array, got ' + typeof traits);
     this.predicate = { type: 'traits', value: traits };
     return this;
   }
@@ -409,7 +411,7 @@ class WaitFor {
     this._invocationManager = invocationManager;
     this.element = new InternalElement(invocationManager, emitter, element.matcher);
     this.expectation = new InternalExpect(invocationManager, this.element);
-    this._emitter = emitter
+    this._emitter = emitter;
   }
 
   toBeVisible() {
@@ -617,9 +619,9 @@ function waitFor(invocationManager, emitter, element) {
 }
 
 class IosExpect {
-  constructor({ invocationManager, emitter}) {
+  constructor({ invocationManager, emitter }) {
     this._invocationManager = invocationManager;
-    this._emitter = emitter
+    this._emitter = emitter;
     this.element = this.element.bind(this);
     this.expect = this.expect.bind(this);
     this.waitFor = this.waitFor.bind(this);
